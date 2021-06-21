@@ -14,19 +14,17 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/contrib/ginrus"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/csrf"
-	adapter "github.com/gwatts/gin-adapter"
 	"github.com/open-policy-agent/opa/ast"
 	"github.com/sirupsen/logrus"
 	"github.com/unrolled/secure"
 
 	"github.com/mailbadger/app/actions"
+	"github.com/mailbadger/app/mode"
 	"github.com/mailbadger/app/opa"
 	"github.com/mailbadger/app/routes/middleware"
 	"github.com/mailbadger/app/s3"
 	"github.com/mailbadger/app/storage"
 	"github.com/mailbadger/app/templates"
-	"github.com/mailbadger/app/utils"
 )
 
 // New creates a new HTTP handler with the specified middleware.
@@ -39,7 +37,7 @@ func New() http.Handler {
 	log := logrus.New()
 	log.SetLevel(lvl)
 	log.SetOutput(os.Stdout)
-	if utils.IsProductionMode() {
+	if mode.IsProd() {
 		log.SetFormatter(&logrus.JSONFormatter{})
 	}
 
@@ -91,7 +89,7 @@ func New() http.Handler {
 		STSPreload:            true,
 		ContentSecurityPolicy: "default-src 'self';style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'",
 
-		IsDevelopment: !utils.IsProductionMode(),
+		IsDevelopment: !mode.IsProd(),
 	})
 	secureFunc := func() gin.HandlerFunc {
 		return func(c *gin.Context) {
@@ -178,31 +176,11 @@ func New() http.Handler {
 		handler,
 		opacompiler,
 		middleware.NoCache(),
-		CSRF(),
+		middleware.CSRF(),
 		tollbooth_gin.LimitHandler(lmt),
 	)
 
 	return handler
-}
-
-// CSRF returns a handler which performs checks for CSRF tokens.
-func CSRF() gin.HandlerFunc {
-	secureCookie, _ := strconv.ParseBool(os.Getenv("SECURE_COOKIE"))
-	csrfMd := csrf.Protect([]byte(os.Getenv("SESSION_AUTH_KEY")),
-		csrf.MaxAge(0),
-		csrf.Secure(secureCookie),
-		csrf.Path("/api"),
-		csrf.SameSite(csrf.SameSiteStrictMode),
-		csrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusForbidden)
-			_, err := w.Write([]byte(`{"message": "Forbidden - CSRF token invalid"}`))
-			if err != nil {
-				logrus.Error(err)
-			}
-		})),
-	)
-
-	return adapter.Wrap(csrfMd)
 }
 
 // SetGuestRoutes sets the guest routes to the gin engine handler along with
@@ -277,7 +255,7 @@ func SetAuthorizedRoutes(handler *gin.Engine, opacompiler *ast.Compiler, middlew
 			segments.DELETE("/:id", actions.DeleteSegment)
 			segments.PUT("/:id/subscribers", actions.PutSegmentSubscribers)
 			segments.GET("/:id/subscribers", middleware.PaginateWithCursor(), actions.GetSegmentsubscribers)
-			segments.POST("/:id/subscribers", actions.DetachSegmentSubscribers)
+			segments.POST("/:id/subscribers/detach", actions.DetachSegmentSubscribers)
 			segments.DELETE("/:id/subscribers/:sub_id", actions.DetachSubscriber)
 		}
 
@@ -285,16 +263,7 @@ func SetAuthorizedRoutes(handler *gin.Engine, opacompiler *ast.Compiler, middlew
 		{
 			subscribers.GET("", middleware.PaginateWithCursor(), actions.GetSubscribers)
 			subscribers.GET("/:id", actions.GetSubscriber)
-			subscribers.GET("/:id/download", func(c *gin.Context) {
-				idPath := c.Param("id")
-				if idPath == "export" {
-					actions.DownloadSubscribersReport(c)
-					return
-				}
-				c.JSON(http.StatusNotFound, gin.H{
-					"message": "Not found.",
-				})
-			})
+			subscribers.GET("/export/download", actions.DownloadSubscribersReport)
 			subscribers.POST("", actions.PostSubscriber)
 			subscribers.PUT("/:id", actions.PutSubscriber)
 			subscribers.DELETE("/:id", actions.DeleteSubscriber)
