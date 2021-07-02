@@ -31,7 +31,7 @@ require (
 	github.com/nsqio/go-nsq v1.0.8
 	github.com/open-policy-agent/opa v0.30.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
-	github.com/pkg/profile v1.5.0
+	github.com/pkg/profile v1.6.0
 	github.com/rakyll/statik v0.1.7
 	github.com/robbiet480/go.sns v0.0.0-20181124163742-ca087b49e1da
 	github.com/rubenv/sql-migrate v0.0.0-20200616145509-8d140a17f351
