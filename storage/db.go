@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"time"
-
+	
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"github.com/jinzhu/gorm"
@@ -15,11 +15,10 @@ import (
 	migrate "github.com/rubenv/sql-migrate"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
-
+	
+	"github.com/mailbadger/app/entities"
 	"github.com/mailbadger/app/mode"
 	_ "github.com/mailbadger/app/statik"
-
-	"github.com/mailbadger/app/entities"
 	"github.com/mailbadger/app/utils"
 )
 
