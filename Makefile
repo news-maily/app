@@ -43,3 +43,6 @@ run_sender:
 
 install_fixtures:
 	./scripts/install-fixtures.sh
+
+process_events:
+	./scripts/process-events.sh
